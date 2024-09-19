@@ -106,6 +106,46 @@ exports.checkLegendReq = function(player, message) {
 	let color = "GREEN";
 	let concatUpMsg = message.words.filter(word => !word.includes("<"))
 		.join("").trim().toUpperCase();
+	let found = tryCheckLegendReq(player, message, concatUpMsg)
+	
+	if (!found) {
+		lines = Object.keys(progressByTopUnit);
+		lines.sort((k1, k2) => {
+			return progressByTopUnit[k2] - progressByTopUnit[k1];
+		});
+		lines.push("");
+		lines.push("GL count: "+player.glCount+"/"+maxGlCount);
+		
+		let richMsg = new RichEmbed()
+			.setTitle(player.name+"'s unit status")
+			.setDescription(lines).setColor(color)
+			.setTimestamp(player.updated)
+			.setFooter(config.footer.message, config.footer.iconUrl);
+
+		if (picture && typeof picture === "string" && picture.slice(0, 1)==="/") {
+			picture = "https://swgoh.gg"+picture;
+		}
+
+		if (picture) {
+			richMsg.setThumbnail(picture);
+		}
+
+		message.channel.send(richMsg).catch(function(ex) {
+			console.warn(ex);
+			message.reply(ex.message+" (please allow link integration)");
+			message.channel.send(lines);
+		});
+	}
+};
+
+/** Check for Galactic Legends requirements TODO
+ * @param {object} player The target player
+ * @param {object} message The origin message (request)
+ */
+exports.tryCheckLegendReq = function(player, message, concatUpMsg) {
+	const req = require("../data/gl-checklist");
+
+	let color = "GREEN";
 	let found = false;
 	let lines = [];
 	let logPrefix = exports.logPrefix; // shortcut
@@ -137,7 +177,7 @@ exports.checkLegendReq = function(player, message) {
 
 	unitsOfInterest.forEach(unit => {
 		if (found) return;
-
+		
 		let progresses = [];
 
 		lines = [];
@@ -320,34 +360,28 @@ exports.checkLegendReq = function(player, message) {
 		}
 	}); // end of loop on units
 
-	if (!found) {
-		lines = Object.keys(progressByTopUnit);
-		lines.sort((k1, k2) => {
-			return progressByTopUnit[k2] - progressByTopUnit[k1];
+	if (found) {
+		let richMsg = new RichEmbed()
+			.setTitle(player.name+"'s unit status")
+			.setDescription(lines).setColor(color)
+			.setTimestamp(player.updated)
+			.setFooter(config.footer.message, config.footer.iconUrl);
+
+		if (picture && typeof picture === "string" && picture.slice(0, 1)==="/") {
+			picture = "https://swgoh.gg"+picture;
+		}
+
+		if (picture) {
+			richMsg.setThumbnail(picture);
+		}
+
+		message.channel.send(richMsg).catch(function(ex) {
+			console.warn(ex);
+			message.reply(ex.message+" (please allow link integration)");
+			message.channel.send(lines);
 		});
-		lines.push("");
-		lines.push("GL count: "+player.glCount+"/"+maxGlCount);
 	}
-
-	let richMsg = new RichEmbed()
-		.setTitle(player.name+"'s unit status")
-		.setDescription(lines).setColor(color)
-		.setTimestamp(player.updated)
-		.setFooter(config.footer.message, config.footer.iconUrl);
-
-	if (picture && typeof picture === "string" && picture.slice(0, 1)==="/") {
-		picture = "https://swgoh.gg"+picture;
-	}
-
-	if (picture) {
-		richMsg.setThumbnail(picture);
-	}
-
-	message.channel.send(richMsg).catch(function(ex) {
-		console.warn(ex);
-		message.reply(ex.message+" (please allow link integration)");
-		message.channel.send(lines);
-	});
+	return found;
 };
 
 /** Check for missing modules in a player's roster
